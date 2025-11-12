@@ -1,20 +1,18 @@
 pipeline {
     agent any
 
-    tools {
-        maven 'M3'
-    }
-
     environment {
-        SONARQUBE = credentials('sonar-token') // si tu as ajouté un token dans Jenkins
+        MAVEN_HOME = tool 'M3'
+        PATH = "${MAVEN_HOME}/bin:${PATH}"
     }
 
     stages {
-
         stage('Checkout') {
             steps {
                 echo '📦 Récupération du code source depuis GitHub...'
-                git branch: 'main', url: 'https://github.com/amirabensalah/Devops-amira.git', credentialsId: 'jenkins-github-https-cred'
+                git branch: 'main',
+                    credentialsId: 'jenkins-github-https-cred',
+                    url: 'https://github.com/amirabensalah/Devops-amira.git'
             }
         }
 
@@ -32,8 +30,8 @@ pipeline {
                     mkdir -p dependency-report
                     echo "<html><body><h2>Rapport simulé Dependency Check</h2><p>Aucune vulnérabilité détectée.</p></body></html>" > dependency-report/index.html
                 '''
-                publishHTML([
-                    allowMissing: true,
+                publishHTML(target: [
+                    allowMissing: false,
                     alwaysLinkToLastBuild: true,
                     keepAll: true,
                     reportDir: 'dependency-report',
@@ -47,7 +45,9 @@ pipeline {
             steps {
                 echo '🧠 Analyse SonarQube en cours...'
                 withSonarQubeEnv('SonarQube') {
-                    sh 'mvn sonar:sonar -Dsonar.projectKey=timesheet-devops -Dsonar.host.url=http://localhost:9000'
+                    withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                        sh 'mvn sonar:sonar -Dsonar.projectKey=timesheet-devops -Dsonar.host.url=http://localhost:9000 -Dsonar.login=$SONAR_TOKEN'
+                    }
                 }
             }
         }
@@ -58,54 +58,58 @@ pipeline {
                 sh '''
                     docker build -t timesheet-app:latest .
                     mkdir -p trivy-report
-                    trivy image --severity HIGH,CRITICAL --format template --template "@contrib/html.tpl" -o trivy-report/index.html timesheet-app:latest || true
+                    trivy image --severity HIGH,CRITICAL --format template --template "@contrib/html.tpl" -o trivy-report/index.html timesheet-app:latest
                 '''
-                publishHTML([
-                    allowMissing: true,
+                publishHTML(target: [
+                    allowMissing: false,
                     alwaysLinkToLastBuild: true,
                     keepAll: true,
                     reportDir: 'trivy-report',
                     reportFiles: 'index.html',
-                    reportName: 'Trivy Scan Report'
+                    reportName: 'Trivy Docker Scan Report'
                 ])
             }
         }
 
         stage('Secrets Scan') {
             steps {
-                echo '🕵️‍♀️ Analyse des secrets avec Gitleaks...'
+                echo '🕵️ Scan des secrets avec Gitleaks...'
                 sh '''
                     mkdir -p gitleaks-report
                     gitleaks detect --source . --report-format html --report-path gitleaks-report/index.html || true
                 '''
-                publishHTML([
+                publishHTML(target: [
                     allowMissing: true,
                     alwaysLinkToLastBuild: true,
                     keepAll: true,
                     reportDir: 'gitleaks-report',
                     reportFiles: 'index.html',
-                    reportName: 'Gitleaks Secrets Scan Report'
+                    reportName: 'Gitleaks Secrets Report'
                 ])
             }
         }
 
         stage('Deploy (Simulation)') {
             steps {
-                echo '🚀 Déploiement simulé de l’application...'
-                sh 'echo "Déploiement réussi !"'
+                echo '🚀 Simulation du déploiement de l’application...'
+                sh '''
+                    echo "Déploiement sur un environnement de staging simulé..."
+                    sleep 3
+                    echo "✅ Déploiement terminé avec succès !"
+                '''
             }
         }
     }
 
     post {
-        always {
-            echo '📊 Pipeline terminé — rapports générés.'
-        }
         success {
-            echo '✅ Build et scans de sécurité réussis !'
+            echo '✅ Pipeline exécuté avec succès — tout est vert !'
         }
         failure {
             echo '❌ Une erreur est survenue pendant le pipeline.'
+        }
+        always {
+            echo '📊 Pipeline terminé — rapports générés.'
         }
     }
 }
