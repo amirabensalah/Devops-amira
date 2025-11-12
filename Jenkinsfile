@@ -1,35 +1,30 @@
 pipeline {
     agent any
 
-    tools {
-        maven 'Maven3'
-    }
-
     environment {
-        SONARQUBE_ENV = 'SonarQube'
+        MAVEN_HOME = tool 'M3'
+        PATH = "${MAVEN_HOME}/bin:${PATH}"
     }
 
     stages {
 
         stage('Checkout') {
             steps {
-                echo '📦 Récupération du code source depuis GitHub...'
-                git branch: 'main',
-                    url: 'https://github.com/amirabensalah/Devops-amira.git',
-                    credentialsId: 'jenkins-github-https-cred'
+                echo "📦 Récupération du code source depuis GitHub..."
+                git branch: 'main', credentialsId: 'jenkins-github-https-cred', url: 'https://github.com/amirabensalah/Devops-amira.git'
             }
         }
 
         stage('Build') {
             steps {
-                echo '⚙️ Compilation du projet Maven...'
+                echo "⚙️ Compilation du projet Maven..."
                 sh 'mvn clean package -DskipTests'
             }
         }
 
         stage('SCA - Dependency Check') {
             steps {
-                echo '🔍 Simulation rapide de l’analyse des dépendances...'
+                echo "🔍 Simulation rapide de l’analyse des dépendances..."
                 sh '''
                 mkdir -p dependency-report
                 echo "<html><body><h2>Rapport simulé Dependency Check</h2><p>Aucune vulnérabilité détectée.</p></body></html>" > dependency-report/index.html
@@ -47,7 +42,7 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-                echo '🧠 Analyse SonarQube en cours...'
+                echo "🧠 Analyse SonarQube en cours..."
                 withSonarQubeEnv('SonarQube') {
                     sh 'mvn sonar:sonar -Dsonar.projectKey=timesheet-devops -Dsonar.host.url=http://localhost:9000'
                 }
@@ -56,14 +51,14 @@ pipeline {
 
         stage('Docker Build & Scan') {
             steps {
-                echo '🐳 Construction et scan de l’image Docker...'
+                echo "🐳 Construction et scan de l’image Docker..."
                 sh '''
-                # Build Docker image
                 docker build -t timesheet-app:latest .
-
-                # Scan Docker image avec Trivy
                 mkdir -p trivy-report
-                trivy image --severity HIGH,CRITICAL --format html -o trivy-report/index.html timesheet-app:latest || true
+                trivy image --severity HIGH,CRITICAL \
+                    --format template \
+                    --template "@contrib/html.tpl" \
+                    -o trivy-report/index.html timesheet-app:latest || true
                 '''
                 publishHTML([
                     allowMissing: true,
@@ -78,14 +73,14 @@ pipeline {
 
         stage('Test') {
             steps {
-                echo '🧪 Exécution des tests unitaires...'
+                echo "🧪 Exécution des tests unitaires..."
                 sh 'mvn test'
             }
         }
 
         stage('Deploy') {
             steps {
-                echo '🚀 Déploiement simulé du projet terminé avec succès !'
+                echo "🚀 Déploiement simulé du projet terminé avec succès !"
             }
         }
     }
