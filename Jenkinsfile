@@ -35,6 +35,9 @@ pipeline {
                 echo "<html><body><h2>Rapport simulé Dependency Check</h2><p>Aucune vulnérabilité détectée.</p></body></html>" > dependency-report/index.html
                 '''
                 publishHTML([
+                    allowMissing: true,
+                    alwaysLinkToLastBuild: true,
+                    keepAll: true,
                     reportDir: 'dependency-report',
                     reportFiles: 'index.html',
                     reportName: 'Dependency Check Report'
@@ -63,6 +66,9 @@ pipeline {
                 trivy image --severity HIGH,CRITICAL --format html -o trivy-report/index.html timesheet-app:latest || true
                 '''
                 publishHTML([
+                    allowMissing: true,
+                    alwaysLinkToLastBuild: true,
+                    keepAll: true,
                     reportDir: 'trivy-report',
                     reportFiles: 'index.html',
                     reportName: 'Trivy Docker Scan Report'
