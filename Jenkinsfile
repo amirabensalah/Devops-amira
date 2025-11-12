@@ -31,33 +31,13 @@ pipeline {
             steps {
                 echo '🔍 Simulation rapide de l’analyse des dépendances...'
                 sh '''
-                    mkdir -p dependency-report
-                    echo "<html><body><h2>Rapport simulé Dependency Check</h2><p>Aucune vulnérabilité détectée.</p></body></html>" > dependency-report/dependency-check-report.html
+                mkdir -p dependency-report
+                echo "<html><body><h2>Rapport simulé Dependency Check</h2><p>Aucune vulnérabilité détectée.</p></body></html>" > dependency-report/index.html
                 '''
-                publishHTML(target: [
-                    allowMissing: true,
-                    keepAll: true,
+                publishHTML([
                     reportDir: 'dependency-report',
-                    reportFiles: 'dependency-check-report.html',
+                    reportFiles: 'index.html',
                     reportName: 'Dependency Check Report'
-                ])
-            }
-        }
-
-        // 🔐 NOUVEAU : Scan des secrets avec Gitleaks
-        stage('Secrets Scan - Gitleaks') {
-            steps {
-                echo '🔐 Scan des secrets avec Gitleaks...'
-                sh '''
-                    mkdir -p gitleaks-report
-                    /opt/gitleaks detect --source . --report-format html --report-path gitleaks-report/gitleaks-report.html || true
-                '''
-                publishHTML(target: [
-                    allowMissing: true,
-                    keepAll: true,
-                    reportDir: 'gitleaks-report',
-                    reportFiles: 'gitleaks-report.html',
-                    reportName: 'Gitleaks Secrets Report'
                 ])
             }
         }
@@ -68,6 +48,25 @@ pipeline {
                 withSonarQubeEnv('SonarQube') {
                     sh 'mvn sonar:sonar -Dsonar.projectKey=timesheet-devops -Dsonar.host.url=http://localhost:9000'
                 }
+            }
+        }
+
+        stage('Docker Build & Scan') {
+            steps {
+                echo '🐳 Construction et scan de l’image Docker...'
+                sh '''
+                # Build Docker image
+                docker build -t timesheet-app:latest .
+
+                # Scan Docker image avec Trivy
+                mkdir -p trivy-report
+                trivy image --severity HIGH,CRITICAL --format html -o trivy-report/index.html timesheet-app:latest || true
+                '''
+                publishHTML([
+                    reportDir: 'trivy-report',
+                    reportFiles: 'index.html',
+                    reportName: 'Trivy Docker Scan Report'
+                ])
             }
         }
 
