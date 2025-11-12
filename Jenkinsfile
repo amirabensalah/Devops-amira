@@ -58,7 +58,8 @@ pipeline {
                 sh '''
                     docker build -t timesheet-app:latest .
                     mkdir -p trivy-report
-                    trivy image --severity HIGH,CRITICAL --format template --template "@contrib/html.tpl" -o trivy-report/index.html timesheet-app:latest
+                    trivy image --severity HIGH,CRITICAL --format template --template @/usr/local/share/trivy/contrib/html.tpl -o trivy-report/index.html timesheet-app:latest
+
                 '''
                 publishHTML(target: [
                     allowMissing: false,
