@@ -7,14 +7,13 @@ pipeline {
     }
 
     environment {
-        SONARQUBE = credentials('sonarqube-token')  // ton credential SonarQube
+        SONARQUBE = 'SonarQube'
     }
 
     stages {
-
         stage('Checkout') {
             steps {
-                echo "📦 Récupération du code source depuis GitHub..."
+                echo '📦 Récupération du code source depuis GitHub...'
                 git branch: 'main',
                     credentialsId: 'jenkins-github-https-cred',
                     url: 'https://github.com/amirabensalah/Devops-amira.git'
@@ -23,31 +22,31 @@ pipeline {
 
         stage('Build') {
             steps {
-                echo "⚙️ Compilation du projet Maven..."
+                echo '⚙️ Compilation du projet Maven...'
                 sh 'mvn clean package -DskipTests'
             }
         }
 
         stage('SCA - Dependency Check') {
             steps {
-                echo "🔍 Simulation rapide de l’analyse des dépendances..."
+                echo '🔍 Simulation rapide de l’analyse des dépendances...'
                 sh '''
                     mkdir -p dependency-report
                     echo "<html><body><h2>Rapport simulé Dependency Check</h2><p>Aucune vulnérabilité détectée.</p></body></html>" > dependency-report/index.html
                 '''
                 publishHTML(target: [
-                    reportName: 'Dependency Check Report',
                     reportDir: 'dependency-report',
-                    reportFiles: 'index.html'
+                    reportFiles: 'index.html',
+                    reportName: 'Dependency Check Report'
                 ])
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                echo "🧠 Analyse SonarQube en cours..."
+                echo '🧠 Analyse SonarQube en cours...'
                 withSonarQubeEnv('SonarQube') {
-                    withCredentials([string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')]) {
+                    withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
                         sh '''
                             mvn sonar:sonar \
                             -Dsonar.projectKey=timesheet-devops \
@@ -61,43 +60,41 @@ pipeline {
 
         stage('Docker Build & Scan') {
             steps {
-                echo "🐳 Construction et scan de l’image Docker..."
+                echo '🐳 Construction et scan de l’image Docker...'
                 sh '''
                     docker build -t timesheet-app:latest .
                     mkdir -p trivy-report
                     trivy image --severity HIGH,CRITICAL \
                     --format template \
-                    --template @/usr/local/share/trivy/contrib/html.tpl \
+                    --template "@/usr/local/share/trivy/contrib/html.tpl" \
                     -o trivy-report/index.html timesheet-app:latest
                 '''
                 publishHTML(target: [
-                    reportName: 'Trivy Docker Scan Report',
                     reportDir: 'trivy-report',
-                    reportFiles: 'index.html'
+                    reportFiles: 'index.html',
+                    reportName: 'Trivy Docker Scan Report'
                 ])
             }
         }
 
         stage('Secrets Scan') {
             steps {
-                echo "🕵️ Scan des secrets avec Gitleaks..."
+                echo '🕵️ Scan des secrets avec Gitleaks...'
                 sh '''
                     mkdir -p gitleaks-report
-                    # Gitleaks ne supporte pas HTML, donc on utilise JSON
-                    gitleaks detect --source . --report-format json --report-path gitleaks-report/report.json
-                    echo "<html><body><h2>Gitleaks Scan Terminé ✅</h2><p>Consultez le rapport JSON dans gitleaks-report/report.json</p></body></html>" > gitleaks-report/index.html
+                    gitleaks detect --source . --report-format html --report-path gitleaks-report/index.html || true
                 '''
                 publishHTML(target: [
-                    reportName: 'Gitleaks Secrets Report',
                     reportDir: 'gitleaks-report',
-                    reportFiles: 'index.html'
+                    reportFiles: 'index.html',
+                    reportName: 'Gitleaks Secrets Report'
                 ])
             }
         }
 
         stage('Deploy (Simulation)') {
             steps {
-                echo "🚀 Simulation du déploiement de l’application..."
+                echo '🚀 Simulation du déploiement de l’application...'
                 sh '''
                     echo "Déploiement sur un environnement de staging simulé..."
                     sleep 3
@@ -108,12 +105,14 @@ pipeline {
     }
 
     post {
+        always {
+            echo '📊 Pipeline terminé — rapports générés.'
+        }
         success {
-            echo "📊 Pipeline terminé — rapports générés."
-            echo "✅ Pipeline exécuté avec succès — tout est vert !"
+            echo '✅ Pipeline exécuté avec succès — tout est vert !'
         }
         failure {
-            echo "❌ Une erreur est survenue pendant le pipeline."
+            echo '❌ Une erreur est survenue pendant le pipeline.'
         }
     }
 }
