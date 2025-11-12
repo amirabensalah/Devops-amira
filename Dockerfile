@@ -1,5 +1,6 @@
 # Étape 1 : image de base Java
-FROM openjdk:17-jdk-slim
+FROM eclipse-temurin:17-jdk
+
 
 # Étape 2 : définir le répertoire de travail
 WORKDIR /app
