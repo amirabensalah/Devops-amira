@@ -3,7 +3,7 @@ pipeline {
 
     tools {
         maven 'Maven'
-        jdk 'jdk21'
+        jdk 'JAVA_HOME'
     }
 
     environment {
@@ -35,6 +35,9 @@ pipeline {
                     echo "<html><body><h2>Rapport simulé Dependency Check</h2><p>Aucune vulnérabilité détectée.</p></body></html>" > dependency-report/index.html
                 '''
                 publishHTML(target: [
+                    allowMissing: true,
+                    alwaysLinkToLastBuild: true,
+                    keepAll: true,
                     reportDir: 'dependency-report',
                     reportFiles: 'index.html',
                     reportName: 'Dependency Check Report'
@@ -70,6 +73,9 @@ pipeline {
                     -o trivy-report/index.html timesheet-app:latest
                 '''
                 publishHTML(target: [
+                    allowMissing: true,
+                    alwaysLinkToLastBuild: true,
+                    keepAll: true,
                     reportDir: 'trivy-report',
                     reportFiles: 'index.html',
                     reportName: 'Trivy Docker Scan Report'
@@ -85,6 +91,9 @@ pipeline {
                     gitleaks detect --source . --report-format html --report-path gitleaks-report/index.html || true
                 '''
                 publishHTML(target: [
+                    allowMissing: true,
+                    alwaysLinkToLastBuild: true,
+                    keepAll: true,
                     reportDir: 'gitleaks-report',
                     reportFiles: 'index.html',
                     reportName: 'Gitleaks Secrets Report'
@@ -107,6 +116,7 @@ pipeline {
     post {
         always {
             echo '📊 Pipeline terminé — rapports générés.'
+            echo '🔗 Consulte les rapports HTML en bas de la page Jenkins.'
         }
         success {
             echo '✅ Pipeline exécuté avec succès — tout est vert !'
