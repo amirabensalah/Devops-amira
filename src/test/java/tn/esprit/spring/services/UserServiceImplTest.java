@@ -7,7 +7,5 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
 @TestMethodOrder(OrderAnnotation.class)
-class UserServiceImplTest {
-    String password = "123456";
-
-  }
+class UserServiceImplTest {}
+  
